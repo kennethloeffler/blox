@@ -51,7 +51,7 @@
   :group 'blox-executables)
 
 (defun blox--save-some-lua-mode-buffers ()
-    "Prompt to save any unsaved lua-mode buffers."
+  "Prompt to save any unsaved lua-mode buffers."
   (save-some-buffers nil (lambda ()
                            (eq major-mode 'lua-mode))))
 
