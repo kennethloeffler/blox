@@ -1,6 +1,13 @@
-;;; blox.el --- Interact with Roblox tooling -*- lexical-binding: t; -*-
+;;; blox.el --- Interaction with Roblox tooling -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2021 Kenneth Loeffler
+
+;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
+;; Version: 0.0.0
+;; Keywords: roblox, rojo
+;; URL: https://github.com/kennethloeffler/blox
+
+;; This file is not part of GNU Emacs.
 
 ;; This program is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
@@ -17,7 +24,8 @@
 
 ;;; Commentary:
 
-;; Provide functions to use Roblox tooling from Emacs.
+;; blox.el provides functions to run Roblox tooling (such as Rojo)
+;; from Emacs.
 
 ;;; Code:
 
