@@ -4,7 +4,7 @@
 
 ### Installation
 
-To install, put `blox.el` somewhere on your `load-path` and `require` it (or equivalent). `blox.el` doesn't bind any keys by itself - a configuration might look something like this (with `use-package`):
+To install, put `blox.el` somewhere on your `load-path` and `require` it (or equivalent). `blox.el` doesn't bind any keys by itself - a configuration might look something like this (with [use-package](https://github.com/jwiegley/use-package)):
 
 ```elisp
 (use-package blox
