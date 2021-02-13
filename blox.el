@@ -35,16 +35,16 @@
   :group 'tools)
 
 (defgroup blox-executables nil
-  "Names of executables to use."
+  "Names of executable files."
   :group 'blox)
 
 (defcustom blox-test-project "test.project.json"
-  "The name of the project to use for `blox-test'."
+  "The name of the project file to use for `blox-test'."
   :type 'string
   :group 'blox)
 
 (defcustom blox-test-script "TestRunner.server.lua"
-  "The name of the script to use for `blox-test'."
+  "The name of the Lua script file to use for `blox-test'."
   :type 'string
   :group 'blox)
 
@@ -174,7 +174,14 @@ Both SCRIPT-PATH and PLACE-FILENAME must be under the same directory."
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
-The files are expected to be under the same directory."
+This function locates the test files by traversing upwards
+through the directory hierarchy starting at `default-directory'
+until it finds `blox-test-script'.  It then attempts to locate
+`blox-test-project' in `blox-test-script''s containing directory.
+If either of these steps fails, the function returns early and
+displays a message in the echo area.  In a typical project setup,
+this means `blox-test-script' and `blox-test-project' should both
+be under the project's root directory."
   (interactive)
   (let ((directory (locate-dominating-file
                     default-directory
