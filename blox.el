@@ -4,8 +4,9 @@
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
 ;; Version: 0.0.0
-;; Keywords: roblox, rojo
+;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
+;; Package-Requires: ((emacs "25.1"))
 
 ;; This file is not part of GNU Emacs.
 
@@ -59,7 +60,7 @@
   :group 'blox-executables)
 
 (defun blox--save-some-lua-mode-buffers ()
-  "Prompt to save any unsaved lua-mode buffers."
+  "Prompt to save any unsaved `lua-mode' buffers."
   (save-some-buffers nil (lambda ()
                            (eq major-mode 'lua-mode))))
 
