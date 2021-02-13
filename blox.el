@@ -149,6 +149,11 @@ prompting."
              (file-name-nondirectory project-path)
              "--output" output)))
     (cd previous-directory)
+    (blox--echo (format "Built %s to %s"
+                        (file-name-nondirectory project-path)
+                        (concat (file-name-directory project-path)
+                                output))
+                "blox-rojo-build")
     output))
 
 (defun blox-rojo-build-default ()
