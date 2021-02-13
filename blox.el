@@ -139,13 +139,15 @@ prompting."
                                              project-path))
                   (blox--get-project-type project-path))))
     (cd (file-name-directory project-path))
-    (make-process
-     :name "*rojo-build*"
-     :buffer (get-buffer-create "*rojo-build*")
-     :command
-     (list blox-rojo-executable "build"
-           (file-name-nondirectory project-path)
-           "--output" output))
+    (with-current-buffer (get-buffer-create "*rojo-build*")
+      (help-mode)
+      (make-process
+       :name "*rojo-build*"
+       :buffer (get-buffer "*rojo-build*")
+       :command
+       (list blox-rojo-executable "build"
+             (file-name-nondirectory project-path)
+             "--output" output)))
     (cd previous-directory)
     output))
 
