@@ -68,6 +68,13 @@
       (setq buffer-read-only t))
     (message string)))
 
+(defun blox--display-buffer-sentinel (buffer)
+  "Higher-order function for returning a process sentinel which displays BUFFER whenever there is an event."
+  (lambda (_process _event)
+    (with-current-buffer buffer
+      (help-mode)
+      (display-buffer buffer))))
+
 (defun blox-rojo-serve ()
   "Prompt for a project file for Rojo to start serving."
   (interactive)
@@ -119,11 +126,14 @@ If WORKING-DIR is provided, output into that directory.  If FORCE-PROJECT is pro
   (if (and (get-process "*run-in-roblox*")
            (eq (process-status "*run-in-roblox*") 'run))
       (kill-buffer "*run-in-roblox*"))
-  (with-output-to-temp-buffer "*run-in-roblox*"
-    (call-process blox-run-in-roblox-executable
-                  nil (get-buffer "*run-in-roblox*") t
-                  "--place" place
-                  "--script" (file-name-nondirectory script))))
+  (make-process
+     :name "*run-in-roblox*"
+     :buffer (get-buffer-create "*run-in-roblox*")
+     :command (list blox-run-in-roblox-executable
+                    "--place" place
+                    "--script" (file-name-nondirectory script))
+     :sentinel (blox--display-buffer-sentinel
+                (get-buffer "*run-in-roblox*"))))
 
 (defun blox-rojo-build-and-run ()
   "Prompt for a Rojo place and a script, build the place, then run the script."
