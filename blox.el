@@ -170,6 +170,7 @@ Both SCRIPT-PATH and PLACE-FILENAME must be under the same directory."
            "blox-run-in-roblox")
         (let ((previous-directory default-directory))
           (cd (file-name-directory script-path))
+          (blox--echo "Starting Roblox Studio..." "blox-run-in-roblox")
           (make-process
            :name "*run-in-roblox*"
            :buffer (get-buffer-create "*run-in-roblox*")
