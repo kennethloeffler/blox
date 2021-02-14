@@ -25,8 +25,29 @@
 
 ;;; Commentary:
 
-;; blox.el provides functions to run Roblox tooling (such as Rojo)
-;; from Emacs.
+;; blox.el provides functions to run Roblox tooling such as Rojo (see
+;; https://github.com/rojo-rbx/rojo) from Emacs.
+
+;; `blox.el` doesn't bind any keys by itself; assuming `lua-mode' is
+;; installed and loaded, a configuration might look something like
+;; this:
+
+;; (require 'blox)
+
+;; (define-key lua-prefix-mode-map (kbd "s")
+;;             #'blox-rojo-serve)
+;; (define-key lua-prefix-mode-map (kbd "b")
+;;             #'blox-rojo-build)
+;; (define-key lua-prefix-mode-map (kbd "t")
+;;             #'blox-test)
+
+;; Or with `use-package':
+
+;; (use-package blox
+;;   :bind (:map lua-prefix-mode-map
+;;               ("s" . blox-rojo-serve)
+;;               ("b" . blox-rojo-build)
+;;               ("t" . blox-test)))
 
 ;;; Code:
 
