@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.1.0
+;; Version: 0.1.1
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
@@ -102,21 +102,25 @@
       (setq buffer-read-only t))
     (blox--echo string "blox-rojo-serve")))
 
-(defun blox--display-buffer-sentinel (buffer)
+(defun blox--run-in-roblox-sentinel (buffer)
   "Return a process sentinel to call `display-buffer' on BUFFER.
-Also turn on `help-mode' in BUFFER."
+Also turn on `help-mode' in BUFFER and display a message in the
+echo area."
   (lambda (_process _event)
     (with-current-buffer buffer
       (help-mode)
-      (display-buffer buffer))))
+      (display-buffer buffer)
+      (blox--echo "Waiting for output from Roblox Studio...done"
+                  "blox-run-in-roblox"))))
 
 (defun blox--prompt-kill-p (process-name)
   "Prompt to kill PROCESS-NAME and return nil if the user answers no.
 Return t if the process is not running or if the user answers yes."
   (if (and (get-process process-name)
            (eq (process-status process-name) 'run))
-      (if (not (yes-or-no-p (format "%s is still running. Kill it?"
-                                    process-name)))
+      (if (not (y-or-n-p (format
+                          "The process %s is still running.  Kill it? "
+                          process-name)))
           nil
         (kill-process process-name)
         t)
@@ -206,11 +210,12 @@ in the echo area."
            "blox-run-in-roblox")
         (let ((previous-directory default-directory))
           (cd (file-name-directory script-path))
-          (blox--echo "Starting Roblox Studio..." "blox-run-in-roblox")
+          (blox--echo "Waiting for output from Roblox Studio..."
+                      "blox-run-in-roblox")
           (make-process
            :name "*run-in-roblox*"
            :buffer (get-buffer-create "*run-in-roblox*")
-           :sentinel (blox--display-buffer-sentinel
+           :sentinel (blox--run-in-roblox-sentinel
                       (get-buffer "*run-in-roblox*"))
            :command
            (list blox-run-in-roblox-executable
