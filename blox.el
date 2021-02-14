@@ -162,8 +162,8 @@ prompting."
   "Build the first found default.project.json.
 Locate the project by traversing upwards through the directory
 hierarchy until reaching a directory that contains a file named
-default.project.json.  If this fails, abort and
-display a message in the echo area."
+default.project.json.  If this fails, abort and display a message
+in the echo area."
   (interactive)
   (let ((project (locate-dominating-file default-directory
                                          "default.project.json")))
@@ -175,8 +175,8 @@ display a message in the echo area."
 (defun blox-run-in-roblox (script-path place-filename)
   "Run the Lua script at SCRIPT-PATH in PLACE-FILENAME with run-in-roblox.
 Both SCRIPT-PATH and PLACE-FILENAME must be under the same
-directory.  If this is not the case, abort and display a
-message in the echo area."
+directory.  If this is not the case, abort and display a message
+in the echo area."
   (if (blox--prompt-kill-p "*run-in-roblox*")
       (if (not (locate-file place-filename
                             (list (file-name-directory script-path))))
@@ -200,8 +200,8 @@ message in the echo area."
 (defun blox-rojo-build-and-run ()
   "Prompt to build a Rojo project and a script to run in it.
 The script and project files are expected to be under the same
-directory.  If this is not the case, abort and display a
-message in the echo area."
+directory.  If this is not the case, abort and display a message
+in the echo area."
   (interactive)
   (blox-run-in-roblox
    (read-file-name "Choose script: "
