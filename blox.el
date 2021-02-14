@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.1.1
+;; Version: 0.1.2
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
@@ -25,10 +25,10 @@
 
 ;;; Commentary:
 
-;; blox.el provides functions to run Roblox tooling such as Rojo (see
+;; blox provides functions to run Roblox tooling such as Rojo (see
 ;; https://github.com/rojo-rbx/rojo) from Emacs.
 
-;; `blox.el` doesn't bind any keys by itself; assuming `lua-mode' is
+;; blox doesn't bind any keys by itself; assuming `lua-mode' is
 ;; installed and loaded, a configuration might look something like
 ;; this:
 
@@ -87,20 +87,22 @@
 
 (defun blox--echo (message-string command-name)
   "Display MESSAGE-STRING formatted with COMMAND-NAME in the echo area."
-  (message (format "[%s]: %s" command-name message-string)))
+  (message "[%s]: %s" command-name message-string))
 
-(defun blox--rojo-serve-echo-filter (proc string)
-  "Write STRING to PROC's buffer and display it in the echo area."
-  (with-current-buffer (process-buffer proc)
-    (let ((moving (= (point) (process-mark proc))))
-      (setq buffer-read-only nil)
-      (save-excursion
-        (goto-char (process-mark proc))
-        (insert string)
-        (set-marker (process-mark proc) (point)))
-      (if moving (goto-char (process-mark proc)))
-      (setq buffer-read-only t))
-    (blox--echo string "blox-rojo-serve")))
+(defun blox--echo-filter (command)
+  "Return a filter that displays output from COMMAND in the echo area.
+Also write the output to the process buffer."
+  (lambda (proc string)
+    (with-current-buffer (process-buffer proc)
+      (let ((moving (= (point) (process-mark proc))))
+        (setq buffer-read-only nil)
+        (save-excursion
+          (goto-char (process-mark proc))
+          (insert string)
+          (set-marker (process-mark proc) (point)))
+        (if moving (goto-char (process-mark proc)))
+        (setq buffer-read-only t))
+      (blox--echo string command))))
 
 (defun blox--run-in-roblox-sentinel (buffer)
   "Return a process sentinel to call `display-buffer' on BUFFER.
@@ -145,7 +147,7 @@ Return t if the process is not running or if the user answers yes."
           (make-process
            :name "*rojo-serve*"
            :buffer (get-buffer "*rojo-serve*")
-           :filter #'blox--rojo-serve-echo-filter
+           :filter (blox--echo-filter "blox-rojo-serve")
            :command
            (list blox-rojo-executable "serve"
                  (read-file-name "Choose project: " directory "")))))))
@@ -171,17 +173,15 @@ prompting."
       (make-process
        :name "*rojo-build*"
        :buffer (get-buffer "*rojo-build*")
+       :filter (blox--echo-filter "blox-rojo-build")
        :command
        (list blox-rojo-executable "build"
              (file-name-nondirectory project-path)
              "--output" output)))
     (cd previous-directory)
-    (blox--echo (format "Built %s to %s"
-                        (file-name-nondirectory project-path)
-                        (concat (file-name-directory project-path)
-                                output))
-                "blox-rojo-build")
-    output))
+    (if (locate-file output
+                     (list (file-name-directory project-path)))
+        output)))
 
 (defun blox-rojo-build-default ()
   "Build the first found default.project.json.
@@ -229,10 +229,12 @@ The script and project files are expected to be under the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (interactive)
-  (blox-run-in-roblox
-   (read-file-name "Choose script: "
-                   (or (vc-root-dir) default-directory) "")
-   (blox-rojo-build)))
+  (let ((place (blox-rojo-build)))
+    (if place
+        (blox-run-in-roblox
+         (read-file-name "Choose script: "
+                         (or (vc-root-dir) default-directory) "")
+         place))))
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
@@ -250,12 +252,11 @@ directory."
                                            blox-test-script)))
     (if (not directory)
         (blox--echo "Could not locate test script" "blox-test")
-      (if (not (locate-file blox-test-project (list directory)))
-          (blox--echo "Could not locate test project" "blox-test")
-        (blox-run-in-roblox
-         (concat directory blox-test-script)
-         (blox-rojo-build (concat directory
-                                  blox-test-project)))))))
+      (let ((place (blox-rojo-build (concat directory
+                                            blox-test-project))))
+        (if place
+            (blox-run-in-roblox (concat directory blox-test-script)
+                                place))))))
 
 (provide 'blox)
 
