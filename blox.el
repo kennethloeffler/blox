@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.0.1
+;; Version: 0.1.0
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
