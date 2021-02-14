@@ -120,7 +120,7 @@ Return t if the process is not running or if the user answers yes."
           (make-process
            :name "*rojo-serve*"
            :buffer (get-buffer "*rojo-serve*")
-           :filter 'blox--rojo-serve-echo-filter
+           :filter #'blox--rojo-serve-echo-filter
            :command
            (list blox-rojo-executable "serve"
                  (read-file-name "Choose project: " directory "")))))))
