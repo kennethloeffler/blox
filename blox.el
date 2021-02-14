@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.1.2
+;; Version: 0.1.3
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
@@ -115,20 +115,15 @@ echo area."
       (blox--echo "Waiting for output from Roblox Studio...done"
                   "blox-run-in-roblox"))))
 
-(defun blox--prompt-kill-p (process-name)
-  "Prompt to kill PROCESS-NAME and return nil if the user answers no.
-Return t if the process is not running or if the user answers yes."
-  (if (and (get-process process-name)
-           (eq (process-status process-name) 'run))
-      (if (not (y-or-n-p (format
-                          "The process %s is still running.  Kill it? "
-                          process-name)))
-          nil
-        (kill-process process-name)
-        t)
-    t))
+(defun blox--kill-if-running-p (process-name)
+  "Prompt to kill the process if PROCESS-NAME is running.
+Return t if the answer is \"y\" or if the process is not running.
+Return nil if the process is running and the answer is \"n\"."
+  (or (not (and (get-process process-name)
+                (eq (process-status process-name) 'run)))
+      (kill-buffer (process-buffer (get-process process-name)))))
 
-(defun blox--get-project-type (project-path)
+(defun blox--roblox-file-extension (project-path)
   "Return the appropriate Roblox file extension for PROJECT-PATH."
   (with-temp-buffer
     (insert-file-contents project-path)
@@ -136,11 +131,17 @@ Return t if the process is not running or if the user answers yes."
         ".rbxlx"
       ".rbxmx")))
 
+(defun blox--project-build-path (project-path)
+  "Return the path of the build corresponding to PROJECT-PATH."
+  (concat (file-name-sans-extension (file-name-nondirectory
+                                     project-path))
+          (blox--roblox-file-extension project-path)))
+
 (defun blox-rojo-serve ()
   "Prompt for a project file for Rojo to start serving."
   (interactive)
   (blox--save-some-lua-mode-buffers)
-  (if (blox--prompt-kill-p "*rojo-serve*")
+  (if (blox--kill-if-running-p "*rojo-serve*")
       (let ((directory (or (vc-root-dir) default-directory)))
         (with-current-buffer (get-buffer-create "*rojo-serve*")
           (help-mode)
@@ -163,10 +164,7 @@ prompting."
          (project-path (or force-project-path
                            (read-file-name "Choose project: "
                                            vc-or-default "")))
-         (output (concat
-                  (file-name-sans-extension (file-name-nondirectory
-                                             project-path))
-                  (blox--get-project-type project-path))))
+         (output (blox--project-build-path project-path)))
     (cd (file-name-directory project-path))
     (with-current-buffer (get-buffer-create "*rojo-build*")
       (help-mode)
@@ -202,7 +200,7 @@ in the echo area."
 Both SCRIPT-PATH and PLACE-FILENAME must be under the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
-  (if (blox--prompt-kill-p "*run-in-roblox*")
+  (if (blox--kill-if-running-p "*run-in-roblox*")
       (if (not (locate-file place-filename
                             (list (file-name-directory script-path))))
           (blox--echo
