@@ -82,7 +82,8 @@
     (blox--echo string "blox-rojo-serve")))
 
 (defun blox--display-buffer-sentinel (buffer)
-  "Return a process sentinel to call `display-buffer' on BUFFER after every event."
+  "Return a process sentinel to call `display-buffer' on BUFFER.
+Also turn on `help-mode' in BUFFER."
   (lambda (_process _event)
     (with-current-buffer buffer
       (help-mode)
@@ -90,7 +91,7 @@
 
 (defun blox--prompt-kill-p (process-name)
   "Prompt to kill PROCESS-NAME and return nil if the user answers no.
-Otherwise, return t."
+Return t if the process is not running or if the user answers yes."
   (if (and (get-process process-name)
            (eq (process-status process-name) 'run))
       (if (not (yes-or-no-p (format "%s is still running. Kill it?"
@@ -158,7 +159,11 @@ prompting."
     output))
 
 (defun blox-rojo-build-default ()
-  "Build the first found default.project.json."
+  "Build the first found default.project.json.
+Locate the project by traversing upwards through the directory
+hierarchy until reaching a directory that contains a file named
+default.project.json.  If this fails, abort and
+display a message in the echo area."
   (interactive)
   (let ((project (locate-dominating-file default-directory
                                          "default.project.json")))
@@ -169,7 +174,9 @@ prompting."
 
 (defun blox-run-in-roblox (script-path place-filename)
   "Run the Lua script at SCRIPT-PATH in PLACE-FILENAME with run-in-roblox.
-Both SCRIPT-PATH and PLACE-FILENAME must be under the same directory."
+Both SCRIPT-PATH and PLACE-FILENAME must be under the same
+directory.  If this is not the case, abort and display a
+message in the echo area."
   (if (blox--prompt-kill-p "*run-in-roblox*")
       (if (not (locate-file place-filename
                             (list (file-name-directory script-path))))
@@ -193,7 +200,8 @@ Both SCRIPT-PATH and PLACE-FILENAME must be under the same directory."
 (defun blox-rojo-build-and-run ()
   "Prompt to build a Rojo project and a script to run in it.
 The script and project files are expected to be under the same
-directory."
+directory.  If this is not the case, abort and display a
+message in the echo area."
   (interactive)
   (blox-run-in-roblox
    (read-file-name "Choose script: "
@@ -202,14 +210,15 @@ directory."
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
-This function locates the test files by traversing upwards
-through the directory hierarchy starting at `default-directory'
-until it finds `blox-test-script'.  It then attempts to locate
-`blox-test-project' in `blox-test-script''s containing directory.
-If either of these steps fails, the function returns early and
-displays a message in the echo area.  In a typical project setup,
-this means `blox-test-script' and `blox-test-project' should both
-be under the project's root directory."
+Locate the test files by traversing upwards through the directory
+hierarchy starting at `default-directory' until finding
+`blox-test-script', then attempt to locate `blox-test-project' in
+`blox-test-script''s containing directory.  If either of these
+steps fails, abort and display a message in the echo area.
+
+In a typical project setup, this means `blox-test-script' and
+`blox-test-project' should both be under the project's root
+directory."
   (interactive)
   (let ((directory (locate-dominating-file default-directory
                                            blox-test-script)))
