@@ -156,10 +156,7 @@ process."
        (list blox-rojo-executable "build"
              (file-name-nondirectory project-path)
              "--output" output)))
-    (cd previous-directory)
-    (if (locate-file output
-                     (list (file-name-directory project-path)))
-        output)))
+    (cd previous-directory)))
 
 (defun blox-prompt-serve ()
   "Prompt for a project file for Rojo to start serving."
