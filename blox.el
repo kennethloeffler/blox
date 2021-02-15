@@ -115,6 +115,14 @@ echo area."
       (blox--echo "Waiting for output from Roblox Studio...done"
                   "blox-run-in-roblox"))))
 
+(defun blox--run-after-build-sentinel (script-path project-path)
+  "Return a process sentinel to run SCRIPT-PATH in PROJECT-PATH."
+  (lambda (_process event)
+    (if (equal event "finished\n")
+        (blox-run-in-roblox
+         script-path
+         (blox--project-build-filename project-path)))))
+
 (defun blox--kill-if-running-p (process-name)
   "Prompt to kill the process if PROCESS-NAME is running.
 Return t if the answer is \"y\" or if the process is not running.
@@ -164,6 +172,10 @@ Both SCRIPT-PATH and PLACE-FILENAME must be under the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (if (blox--kill-if-running-p "*run-in-roblox*")
+      ;; We're fussing with the current directory and the locations of
+      ;; --place and --script here because some weirdness is happening
+      ;; when run-in-roblox is given absolute pathnames.  This
+      ;; probably only happens when it's called from WSL?
       (if (not (locate-file place-filename
                             (list (file-name-directory script-path))))
           (blox--echo
@@ -230,13 +242,9 @@ in the echo area."
   (let* ((directory (or (vc-root-dir) default-directory))
          (project (read-file-name "Choose project: " directory ""))
          (script (read-file-name "Choose script " directory "")))
-    (blox-rojo-build
-     project
-     (lambda (process _event)
-       (if (eq (process-status process) 'exit)
-           (blox-run-in-roblox
-            script
-            (blox--project-build-filename project)))))))
+    (blox-rojo-build project
+                     (blox--run-after-build-sentinel script
+                                                     project))))
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
@@ -250,19 +258,15 @@ In a typical project setup, this means `blox-test-script' and
 `blox-test-project' should both be under the project's root
 directory."
   (interactive)
-  (let ((directory (locate-dominating-file default-directory
-                                           blox-test-script)))
-    (if (not directory)
-        (blox--echo "Could not locate test script" "blox-test")
+  (if-let ((directory (locate-dominating-file default-directory
+                                              blox-test-script))
+           (test-project (concat directory blox-test-project))
+           (test-script (concat directory blox-test-script)))
       (blox-rojo-build
-       (concat directory blox-test-project)
-       (lambda (process _event)
-         (if (eq (process-status process) 'exit)
-             (blox-run-in-roblox (concat directory
-                                         blox-test-script)
-                                 (blox--project-build-filename
-                                  (concat directory
-                                          blox-test-project)))))))))
+       test-project
+       (blox--run-after-build-sentinel test-script
+                                       test-project))
+    (blox--echo "Could not locate test script" "blox-test")))
 
 (provide 'blox)
 
