@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.1.3
+;; Version: 0.2.0
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
@@ -131,7 +131,7 @@ Return nil if the process is running and the answer is \"n\"."
         ".rbxlx"
       ".rbxmx")))
 
-(defun blox--project-build-path (project-path)
+(defun blox--project-build-filename (project-path)
   "Return the path of the build corresponding to PROJECT-PATH."
   (concat (file-name-sans-extension (file-name-nondirectory
                                      project-path))
@@ -230,12 +230,16 @@ The script and project files are expected to be under the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (interactive)
-  (let ((place (blox-rojo-build)))
-    (if place
-        (blox-run-in-roblox
-         (read-file-name "Choose script: "
-                         (or (vc-root-dir) default-directory) "")
-         place))))
+  (let* ((directory (or (vc-root-dir) default-directory))
+         (project (read-file-name "Choose project: " directory ""))
+         (script (read-file-name "Choose script " directory "")))
+    (blox-rojo-build
+     project
+     (lambda (process _event)
+       (if (eq (process-status process) 'exit)
+           (blox-run-in-roblox
+            script
+            (blox--project-build-filename project)))))))
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
@@ -253,11 +257,15 @@ directory."
                                            blox-test-script)))
     (if (not directory)
         (blox--echo "Could not locate test script" "blox-test")
-      (let ((place (blox-rojo-build (concat directory
-                                            blox-test-project))))
-        (if place
-            (blox-run-in-roblox (concat directory blox-test-script)
-                                place))))))
+      (blox-rojo-build
+       (concat directory blox-test-project)
+       (lambda (process _event)
+         (if (eq (process-status process) 'exit)
+             (blox-run-in-roblox (concat directory
+                                         blox-test-script)
+                                 (blox--project-build-filename
+                                  (concat directory
+                                          blox-test-project)))))))))
 
 (provide 'blox)
 
