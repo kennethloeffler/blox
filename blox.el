@@ -137,6 +137,30 @@ Return nil if the process is running and the answer is \"n\"."
                                      project-path))
           (blox--roblox-file-extension project-path)))
 
+(defun blox-rojo-build (project-path &optional sentinel)
+  "Build the project at PROJECT-PATH and return the build's filename.
+If the function SENTINEL is provided, attach it to the rojo
+process."
+  (blox--save-some-lua-mode-buffers)
+  (let* ((previous-directory default-directory)
+         (output (blox--project-build-filename project-path)))
+    (cd (file-name-directory project-path))
+    (with-current-buffer (get-buffer-create "*rojo-build*")
+      (help-mode)
+      (make-process
+       :name "*rojo-build*"
+       :buffer (get-buffer "*rojo-build*")
+       :filter (blox--echo-filter "blox-rojo-build")
+       :sentinel sentinel
+       :command
+       (list blox-rojo-executable "build"
+             (file-name-nondirectory project-path)
+             "--output" output)))
+    (cd previous-directory)
+    (if (locate-file output
+                     (list (file-name-directory project-path)))
+        output)))
+
 (defun blox-rojo-serve ()
   "Prompt for a project file for Rojo to start serving."
   (interactive)
@@ -153,33 +177,12 @@ Return nil if the process is running and the answer is \"n\"."
            (list blox-rojo-executable "serve"
                  (read-file-name "Choose project: " directory "")))))))
 
-(defun blox-rojo-build (&optional force-project-path)
-  "Prompt for a project file for Rojo to build and return its filename.
-If FORCE-PROJECT-PATH is provided, build that project instead of
-prompting."
+(defun blox-prompt-rojo-build ()
+  "Prompt to build a Rojo project."
   (interactive)
-  (blox--save-some-lua-mode-buffers)
-  (let* ((vc-or-default (or (vc-root-dir) default-directory))
-         (previous-directory default-directory)
-         (project-path (or force-project-path
-                           (read-file-name "Choose project: "
-                                           vc-or-default "")))
-         (output (blox--project-build-path project-path)))
-    (cd (file-name-directory project-path))
-    (with-current-buffer (get-buffer-create "*rojo-build*")
-      (help-mode)
-      (make-process
-       :name "*rojo-build*"
-       :buffer (get-buffer "*rojo-build*")
-       :filter (blox--echo-filter "blox-rojo-build")
-       :command
-       (list blox-rojo-executable "build"
-             (file-name-nondirectory project-path)
-             "--output" output)))
-    (cd previous-directory)
-    (if (locate-file output
-                     (list (file-name-directory project-path)))
-        output)))
+  (blox-rojo-build (read-file-name "Choose project: "
+                                   (or (vc-root-dir)
+                                       default-directory))))
 
 (defun blox-rojo-build-default ()
   "Build the first found default.project.json.
