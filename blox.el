@@ -86,12 +86,17 @@
                            (eq major-mode 'lua-mode))))
 
 (defun blox--echo (message-string command-name)
-  "Display MESSAGE-STRING formatted with COMMAND-NAME in the echo area."
-  (message "[%s]: %s" command-name message-string))
+  "Display MESSAGE-STRING prefixed with COMMAND-NAME in the echo area.
+Removes any trailing newlines from MESSAGE-STRING."
+  (message "[%s]: %s"
+           command-name
+           (replace-regexp-in-string "\n\\'" "" message-string)))
 
-(defun blox--echo-filter (command)
-  "Return a filter that displays output from COMMAND in the echo area.
-Also write the output to the process buffer."
+(defun blox--echo-filter (command-name)
+  "Process filter to display process output in the echo area.
+The filter prefixes any output with COMMAND-NAME and writes the
+result to the process buffer, in addition to displaying it in the
+echo area."
   (lambda (proc string)
     (with-current-buffer (process-buffer proc)
       (let ((moving (= (point) (process-mark proc))))
@@ -102,11 +107,11 @@ Also write the output to the process buffer."
           (set-marker (process-mark proc) (point)))
         (if moving (goto-char (process-mark proc)))
         (setq buffer-read-only t))
-      (blox--echo string command))))
+      (blox--echo string command-name))))
 
 (defun blox--run-in-roblox-sentinel (buffer)
-  "Return a process sentinel to call `display-buffer' on BUFFER.
-Also turn on `help-mode' in BUFFER and display a message in the
+  "Process sentinel to call `display-buffer' on BUFFER.
+Also enable `help-mode' in BUFFER and display a message in the
 echo area."
   (lambda (_process _event)
     (with-current-buffer buffer
@@ -116,17 +121,18 @@ echo area."
                   "blox-run-in-roblox"))))
 
 (defun blox--run-after-build-sentinel (script-path project-path)
-  "Return a process sentinel to run SCRIPT-PATH in PROJECT-PATH."
+  "Process sentinel to run SCRIPT-PATH in PROJECT-PATH once finished."
   (lambda (_process event)
     (if (equal event "finished\n")
         (blox-run-in-roblox
          script-path
-         (blox--project-build-filename project-path)))))
+         (blox--build-path project-path)))))
 
 (defun blox--kill-if-running-p (process-name)
   "Prompt to kill the process if PROCESS-NAME is running.
-Return t if the answer is \"y\" or if the process is not running.
-Return nil if the process is running and the answer is \"n\"."
+Return t if the answer is \"yes\" or if the process is not
+running.  Return nil if the process is running and the answer is
+\"no\"."
   (or (not (and (get-process process-name)
                 (eq (process-status process-name) 'run)))
       (kill-buffer (process-buffer (get-process process-name)))))
@@ -139,49 +145,56 @@ Return nil if the process is running and the answer is \"n\"."
         ".rbxlx"
       ".rbxmx")))
 
-(defun blox--project-build-filename (project-path)
+(defun blox--build-path (project-path)
   "Return the path of the build corresponding to PROJECT-PATH."
-  (concat (file-name-sans-extension (file-name-nondirectory
-                                     project-path))
+  (concat (file-name-sans-extension (file-name-base project-path))
           (blox--roblox-file-extension project-path)))
 
+(defun blox-rojo-serve (project-path)
+  "Serve the Rojo project at PROJECT-PATH."
+  (blox--save-some-lua-mode-buffers)
+  (if (blox--kill-if-running-p "*rojo-serve*")
+      (with-current-buffer (get-buffer-create "*rojo-serve*")
+        (cd (or (vc-root-dir) default-directory))
+        (help-mode)
+        (make-process
+         :name "*rojo-serve*"
+         :buffer (get-buffer "*rojo-serve*")
+         :filter (blox--echo-filter "blox-prompt-serve")
+         :command
+         (list blox-rojo-executable "serve" project-path)))))
+
 (defun blox-rojo-build (project-path &optional sentinel)
-  "Build the project at PROJECT-PATH and return the build's filename.
-If the function SENTINEL is provided, attach it to the rojo
+  "Build the Rojo project at PROJECT-PATH.
+If the function SENTINEL is provided, attach it to the Rojo
 process."
   (blox--save-some-lua-mode-buffers)
-  (let* ((previous-directory default-directory)
-         (output (blox--project-build-filename project-path)))
+  (with-current-buffer (get-buffer-create "*rojo-build*")
     (cd (file-name-directory project-path))
-    (with-current-buffer (get-buffer-create "*rojo-build*")
-      (help-mode)
-      (make-process
-       :name "*rojo-build*"
-       :buffer (get-buffer "*rojo-build*")
-       :filter (blox--echo-filter "blox-rojo-build")
-       :sentinel sentinel
-       :command
-       (list blox-rojo-executable "build"
-             (file-name-nondirectory project-path)
-             "--output" output)))
-    (cd previous-directory)))
+    (help-mode)
+    (make-process
+     :name "*rojo-build*"
+     :buffer (get-buffer "*rojo-build*")
+     :filter (blox--echo-filter "blox-rojo-build")
+     :sentinel sentinel
+     :command
+     (list
+      blox-rojo-executable "build" (file-name-nondirectory
+                                    project-path)
+      "--output" (blox--build-path project-path)))))
 
-(defun blox-run-in-roblox (script-path place-filename)
-  "Run the Lua script at SCRIPT-PATH in PLACE-FILENAME with run-in-roblox.
-Both SCRIPT-PATH and PLACE-FILENAME must be under the same
+(defun blox-run-in-roblox (script-path build-path)
+  "Run the Lua script at SCRIPT-PATH in BUILD-PATH with run-in-roblox.
+Both SCRIPT-PATH and BUILD-PATH must have the same penultimate
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (if (blox--kill-if-running-p "*run-in-roblox*")
-      ;; We're fussing with the current directory and the locations of
-      ;; --place and --script here because some weirdness is happening
-      ;; when run-in-roblox is given absolute pathnames.  This
-      ;; probably only happens when it's called from WSL?
-      (if (not (locate-file place-filename
+      (if (not (locate-file build-path
                             (list (file-name-directory script-path))))
           (blox--echo
            "Script and place files must be under the same directory"
            "blox-run-in-roblox")
-        (let ((previous-directory default-directory))
+        (with-current-buffer (get-buffer-create "*run-in-roblox*")
           (cd (file-name-directory script-path))
           (blox--echo "Waiting for output from Roblox Studio..."
                       "blox-run-in-roblox")
@@ -192,25 +205,17 @@ in the echo area."
                       (get-buffer "*run-in-roblox*"))
            :command
            (list blox-run-in-roblox-executable
-                 "--place" place-filename
-                 "--script" (file-name-nondirectory script-path)))
-          (cd previous-directory)))))
+                 "--place" (file-name-nondirectory build-path)
+                 "--script" (file-name-nondirectory script-path)))))))
 
 (defun blox-prompt-serve ()
-  "Prompt for a project file for Rojo to start serving."
+  "Prompt to serve a Rojo project."
   (interactive)
   (blox--save-some-lua-mode-buffers)
   (if (blox--kill-if-running-p "*rojo-serve*")
-      (let ((directory (or (vc-root-dir) default-directory)))
-        (with-current-buffer (get-buffer-create "*rojo-serve*")
-          (help-mode)
-          (make-process
-           :name "*rojo-serve*"
-           :buffer (get-buffer "*rojo-serve*")
-           :filter (blox--echo-filter "blox-prompt-serve")
-           :command
-           (list blox-rojo-executable "serve"
-                 (read-file-name "Choose project: " directory "")))))))
+      (blox-rojo-serve (read-file-name "Choose project: "
+                                       (or (vc-root-dir)
+                                           default-directory)))))
 
 (defun blox-prompt-build ()
   "Prompt to build a Rojo project."
@@ -234,14 +239,14 @@ in the echo area."
       (blox-rojo-build (concat project "default.project.json")))))
 
 (defun blox-prompt-build-and-run ()
-  "Prompt to build a Rojo project and a script to run in it.
+  "Prompt to build a Rojo project, then for a script to run in it.
 The script and project files are expected to be under the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (interactive)
   (let* ((directory (or (vc-root-dir) default-directory))
-         (project (read-file-name "Choose project: " directory ""))
-         (script (read-file-name "Choose script " directory "")))
+         (project (read-file-name "Choose project: " directory))
+         (script (read-file-name "Choose script " directory)))
     (blox-rojo-build project
                      (blox--run-after-build-sentinel script
                                                      project))))
