@@ -158,6 +158,32 @@ process."
              "--output" output)))
     (cd previous-directory)))
 
+(defun blox-run-in-roblox (script-path place-filename)
+  "Run the Lua script at SCRIPT-PATH in PLACE-FILENAME with run-in-roblox.
+Both SCRIPT-PATH and PLACE-FILENAME must be under the same
+directory.  If this is not the case, abort and display a message
+in the echo area."
+  (if (blox--kill-if-running-p "*run-in-roblox*")
+      (if (not (locate-file place-filename
+                            (list (file-name-directory script-path))))
+          (blox--echo
+           "Script and place files must be under the same directory"
+           "blox-run-in-roblox")
+        (let ((previous-directory default-directory))
+          (cd (file-name-directory script-path))
+          (blox--echo "Waiting for output from Roblox Studio..."
+                      "blox-run-in-roblox")
+          (make-process
+           :name "*run-in-roblox*"
+           :buffer (get-buffer-create "*run-in-roblox*")
+           :sentinel (blox--run-in-roblox-sentinel
+                      (get-buffer "*run-in-roblox*"))
+           :command
+           (list blox-run-in-roblox-executable
+                 "--place" place-filename
+                 "--script" (file-name-nondirectory script-path)))
+          (cd previous-directory)))))
+
 (defun blox-prompt-serve ()
   "Prompt for a project file for Rojo to start serving."
   (interactive)
@@ -194,32 +220,6 @@ in the echo area."
         (blox--echo "Could not locate default.project.json"
                     "blox-build-default")
       (blox-rojo-build (concat project "default.project.json")))))
-
-(defun blox-run-in-roblox (script-path place-filename)
-  "Run the Lua script at SCRIPT-PATH in PLACE-FILENAME with run-in-roblox.
-Both SCRIPT-PATH and PLACE-FILENAME must be under the same
-directory.  If this is not the case, abort and display a message
-in the echo area."
-  (if (blox--kill-if-running-p "*run-in-roblox*")
-      (if (not (locate-file place-filename
-                            (list (file-name-directory script-path))))
-          (blox--echo
-           "Script and place files must be under the same directory"
-           "blox-run-in-roblox")
-        (let ((previous-directory default-directory))
-          (cd (file-name-directory script-path))
-          (blox--echo "Waiting for output from Roblox Studio..."
-                      "blox-run-in-roblox")
-          (make-process
-           :name "*run-in-roblox*"
-           :buffer (get-buffer-create "*run-in-roblox*")
-           :sentinel (blox--run-in-roblox-sentinel
-                      (get-buffer "*run-in-roblox*"))
-           :command
-           (list blox-run-in-roblox-executable
-                 "--place" place-filename
-                 "--script" (file-name-nondirectory script-path)))
-          (cd previous-directory)))))
 
 (defun blox-prompt-build-and-run ()
   "Prompt to build a Rojo project and a script to run in it.
