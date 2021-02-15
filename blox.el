@@ -35,9 +35,9 @@
 ;; (require 'blox)
 
 ;; (define-key lua-prefix-mode-map (kbd "s")
-;;             #'blox-rojo-serve)
+;;             #'blox-prompt-serve)
 ;; (define-key lua-prefix-mode-map (kbd "b")
-;;             #'blox-rojo-build)
+;;             #'blox-prompt-build)
 ;; (define-key lua-prefix-mode-map (kbd "t")
 ;;             #'blox-test)
 
@@ -45,8 +45,8 @@
 
 ;; (use-package blox
 ;;   :bind (:map lua-prefix-mode-map
-;;               ("s" . blox-rojo-serve)
-;;               ("b" . blox-rojo-build)
+;;               ("s" . blox-prompt-serve)
+;;               ("b" . blox-prompt-build)
 ;;               ("t" . blox-test)))
 
 ;;; Code:
@@ -161,7 +161,7 @@ process."
                      (list (file-name-directory project-path)))
         output)))
 
-(defun blox-rojo-serve ()
+(defun blox-prompt-serve ()
   "Prompt for a project file for Rojo to start serving."
   (interactive)
   (blox--save-some-lua-mode-buffers)
@@ -172,19 +172,19 @@ process."
           (make-process
            :name "*rojo-serve*"
            :buffer (get-buffer "*rojo-serve*")
-           :filter (blox--echo-filter "blox-rojo-serve")
+           :filter (blox--echo-filter "blox-prompt-serve")
            :command
            (list blox-rojo-executable "serve"
                  (read-file-name "Choose project: " directory "")))))))
 
-(defun blox-prompt-rojo-build ()
+(defun blox-prompt-build ()
   "Prompt to build a Rojo project."
   (interactive)
   (blox-rojo-build (read-file-name "Choose project: "
                                    (or (vc-root-dir)
                                        default-directory))))
 
-(defun blox-rojo-build-default ()
+(defun blox-build-default ()
   "Build the first found default.project.json.
 Locate the project by traversing upwards through the directory
 hierarchy until reaching a directory that contains a file named
@@ -195,7 +195,7 @@ in the echo area."
                                          "default.project.json")))
     (if (not project)
         (blox--echo "Could not locate default.project.json"
-                    "blox-rojo-build-default")
+                    "blox-build-default")
       (blox-rojo-build (concat project "default.project.json")))))
 
 (defun blox-run-in-roblox (script-path place-filename)
@@ -224,7 +224,7 @@ in the echo area."
                  "--script" (file-name-nondirectory script-path)))
           (cd previous-directory)))))
 
-(defun blox-rojo-build-and-run ()
+(defun blox-prompt-build-and-run ()
   "Prompt to build a Rojo project and a script to run in it.
 The script and project files are expected to be under the same
 directory.  If this is not the case, abort and display a message

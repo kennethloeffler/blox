@@ -10,9 +10,9 @@ To install, put `blox.el` somewhere on your `load-path` and `require` it. `blox.
 (require 'blox)
 
 (define-key lua-prefix-mode-map (kbd "s")
-            #'blox-rojo-serve)
+            #'blox-prompt-serve)
 (define-key lua-prefix-mode-map (kbd "b")
-            #'blox-rojo-build)
+            #'blox-prompt-build)
 (define-key lua-prefix-mode-map (kbd "t")
             #'blox-test)
 ```
@@ -22,7 +22,7 @@ Or with [use-package](https://github.com/jwiegley/use-package):
 ```elisp
 (use-package blox
   :bind (:map lua-prefix-mode-map
-              ("s" . blox-rojo-serve)
-              ("b" . blox-rojo-build)
+              ("s" . blox-prompt-serve)
+              ("b" . blox-prompt-build)
               ("t" . blox-test)))
 ```
