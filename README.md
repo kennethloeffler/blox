@@ -9,12 +9,9 @@ To install, put `blox.el` somewhere on your `load-path` and `require` it. `blox.
 ```elisp
 (require 'blox)
 
-(define-key lua-prefix-mode-map (kbd "s")
-            #'blox-prompt-serve)
-(define-key lua-prefix-mode-map (kbd "b")
-            #'blox-prompt-build)
-(define-key lua-prefix-mode-map (kbd "t")
-            #'blox-test)
+(define-key lua-prefix-mode-map (kbd "s") #'blox-prompt-serve)
+(define-key lua-prefix-mode-map (kbd "b") #'blox-prompt-build)
+(define-key lua-prefix-mode-map (kbd "t") #'blox-test)
 ```
 
 Or with [use-package](https://github.com/jwiegley/use-package):
