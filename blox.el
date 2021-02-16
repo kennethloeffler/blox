@@ -167,8 +167,7 @@ message.  Return the path to the file."
           filename))
 
 (defun blox-rojo-serve (project-path)
-  "Serve the Rojo project at PROJECT-PATH.
-If PROJECT-PATH is not specified, just call a plain rojo serve"
+  "Serve the Rojo project at PROJECT-PATH."
   (blox--save-some-lua-mode-buffers)
   (if (blox--kill-if-running-p "*rojo-serve*")
       (with-current-buffer (get-buffer-create "*rojo-serve*")
@@ -201,7 +200,7 @@ process."
 
 (defun blox-run-in-roblox (script-path build-filename)
   "Run the Lua script at SCRIPT-PATH in BUILD-FILENAME with run-in-roblox.
-Both SCRIPT-PATH and BUILD-PATH must have the same penultimate
+Both SCRIPT-PATH and BUILD-FILENAME must be in the same
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (if (blox--kill-if-running-p "*run-in-roblox*")
@@ -240,12 +239,12 @@ in the echo area."
                                        default-directory))))
 
 (defun blox-build-default ()
-  "Build the default Rojo project for `default-directory'."
+  "Build `blox-default-project'."
   (interactive)
   (blox-rojo-build (blox--path blox-default-project)))
 
 (defun blox-serve-default ()
-  "Serve default.project.json."
+  "Serve `blox-default-project'."
   (interactive)
   (blox-rojo-serve (blox--path blox-default-project)))
 
