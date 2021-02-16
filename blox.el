@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Kenneth Loeffler
 
 ;; Author: Kenneth Loeffler <kenneth.loeffler@outlook.com>
-;; Version: 0.2.0
+;; Version: 0.3.0
 ;; Keywords: roblox, rojo, tools
 ;; URL: https://github.com/kennethloeffler/blox
 ;; Package-Requires: ((emacs "25.1"))
@@ -55,6 +55,16 @@
 
 (defgroup blox-executables nil
   "Names of executable files."
+  :group 'blox)
+
+(defcustom blox-binary-output nil
+  "Whether to output binary place and model files."
+  :type 'boolean
+  :group 'blox)
+
+(defcustom blox-default-project "default.project.json"
+  "The name of the Rojo project file to use by default."
+  :type 'string
   :group 'blox)
 
 (defcustom blox-test-project "test.project.json"
@@ -123,43 +133,53 @@ echo area."
     (if (equal event "finished\n")
         (blox-run-in-roblox
          script-path
-         (blox--build-path project-path)))))
+         (blox--build-filename project-path)))))
 
 (defun blox--kill-if-running-p (process-name)
-  "Prompt to kill the process if PROCESS-NAME is running.
+  "Prompt to kill the process buffer of PROCESS-NAME if it is running.
 Return t if the answer is \"yes\" or if the process is not
 running.  Return nil if the process is running and the answer is
 \"no\"."
-  (or (not (and (get-process process-name)
-                (eq (process-status process-name) 'run)))
+  (or (not (get-process process-name))
       (kill-buffer (process-buffer (get-process process-name)))))
 
 (defun blox--roblox-file-extension (project-path)
   "Return the appropriate Roblox file extension for PROJECT-PATH."
   (with-temp-buffer
     (insert-file-contents project-path)
-    (if (search-forward "DataModel" nil t)
-        ".rbxlx"
-      ".rbxmx")))
+    (concat (if (search-forward "DataModel" nil t)
+                ".rbxl"
+              ".rbxm")
+            (if blox-binary-output "" "x"))))
 
-(defun blox--build-path (project-path)
+(defun blox--build-filename (project-path)
   "Return the path of the build corresponding to PROJECT-PATH."
   (concat (file-name-sans-extension (file-name-base project-path))
           (blox--roblox-file-extension project-path)))
 
+(defun blox--path (filename)
+  "Use function `locate-dominating-file' to find FILENAME.
+Start at `default-directory'.  If the file cannot be located,
+fall back to `default-directory' to make Rojo generate an error
+message.  Return the path to the file."
+  (concat (or (locate-dominating-file default-directory filename)
+              default-directory)
+          filename))
+
 (defun blox-rojo-serve (project-path)
-  "Serve the Rojo project at PROJECT-PATH."
+  "Serve the Rojo project at PROJECT-PATH.
+If PROJECT-PATH is not specified, just call a plain rojo serve"
   (blox--save-some-lua-mode-buffers)
   (if (blox--kill-if-running-p "*rojo-serve*")
       (with-current-buffer (get-buffer-create "*rojo-serve*")
-        (cd (or (vc-root-dir) default-directory))
         (help-mode)
         (make-process
          :name "*rojo-serve*"
-         :buffer (get-buffer "*rojo-serve*")
-         :filter (blox--echo-filter "blox-prompt-serve")
+         :buffer (current-buffer)
+         :filter (blox--echo-filter "blox-rojo-serve")
          :command
-         (list blox-rojo-executable "serve" project-path)))))
+         (list blox-rojo-executable "serve"
+               (file-name-nondirectory project-path))))))
 
 (defun blox-rojo-build (project-path &optional sentinel)
   "Build the Rojo project at PROJECT-PATH.
@@ -171,23 +191,24 @@ process."
     (help-mode)
     (make-process
      :name "*rojo-build*"
-     :buffer (get-buffer "*rojo-build*")
+     :buffer (current-buffer)
      :filter (blox--echo-filter "blox-rojo-build")
      :sentinel sentinel
      :command
-     (list
-      blox-rojo-executable "build" (file-name-nondirectory
-                                    project-path)
-      "--output" (blox--build-path project-path)))))
+     (list blox-rojo-executable "build"
+           (file-name-nondirectory project-path)
+           "--output" (blox--build-filename project-path)))))
 
-(defun blox-run-in-roblox (script-path build-path)
-  "Run the Lua script at SCRIPT-PATH in BUILD-PATH with run-in-roblox.
+(defun blox-run-in-roblox (script-path build-filename)
+  "Run the Lua script at SCRIPT-PATH in BUILD-FILENAME with run-in-roblox.
 Both SCRIPT-PATH and BUILD-PATH must have the same penultimate
 directory.  If this is not the case, abort and display a message
 in the echo area."
   (if (blox--kill-if-running-p "*run-in-roblox*")
-      (if (not (locate-file build-path
+      (if (not (locate-file build-filename
                             (list (file-name-directory script-path))))
+          ;; run-in-roblox doesn't produce a very useful error message
+          ;; for this case so we'll do it ourselves!
           (blox--echo
            "Script and place files must be under the same directory"
            "blox-run-in-roblox")
@@ -197,22 +218,19 @@ in the echo area."
                       "blox-run-in-roblox")
           (make-process
            :name "*run-in-roblox*"
-           :buffer (get-buffer-create "*run-in-roblox*")
-           :sentinel (blox--run-in-roblox-sentinel
-                      (get-buffer "*run-in-roblox*"))
+           :buffer (current-buffer)
+           :sentinel (blox--run-in-roblox-sentinel (current-buffer))
            :command
            (list blox-run-in-roblox-executable
-                 "--place" (file-name-nondirectory build-path)
+                 "--place" build-filename
                  "--script" (file-name-nondirectory script-path)))))))
 
 (defun blox-prompt-serve ()
   "Prompt to serve a Rojo project."
   (interactive)
-  (blox--save-some-lua-mode-buffers)
-  (if (blox--kill-if-running-p "*rojo-serve*")
-      (blox-rojo-serve (read-file-name "Choose project: "
-                                       (or (vc-root-dir)
-                                           default-directory)))))
+  (blox-rojo-serve (read-file-name "Choose project: "
+                                   (or (vc-root-dir)
+                                       default-directory))))
 
 (defun blox-prompt-build ()
   "Prompt to build a Rojo project."
@@ -222,18 +240,14 @@ in the echo area."
                                        default-directory))))
 
 (defun blox-build-default ()
-  "Build the first found default.project.json.
-Locate the project by traversing upwards through the directory
-hierarchy until reaching a directory that contains a file named
-default.project.json.  If this fails, abort and display a message
-in the echo area."
+  "Build the default Rojo project for `default-directory'."
   (interactive)
-  (let ((project (locate-dominating-file default-directory
-                                         "default.project.json")))
-    (if (not project)
-        (blox--echo "Could not locate default.project.json"
-                    "blox-build-default")
-      (blox-rojo-build (concat project "default.project.json")))))
+  (blox-rojo-build (blox--path blox-default-project)))
+
+(defun blox-serve-default ()
+  "Serve default.project.json."
+  (interactive)
+  (blox-rojo-serve (blox--path blox-default-project)))
 
 (defun blox-prompt-build-and-run ()
   "Prompt to build a Rojo project, then for a script to run in it.
@@ -250,25 +264,14 @@ in the echo area."
 
 (defun blox-test ()
   "Run `blox-test-script' in `blox-test-project' with run-in-roblox.
-Locate the test files by traversing upwards through the directory
-hierarchy starting at `default-directory' until finding
-`blox-test-script', then attempt to locate `blox-test-project' in
-`blox-test-script''s containing directory.  If either of these
-steps fails, abort and display a message in the echo area.
-
-In a typical project setup, this means `blox-test-script' and
-`blox-test-project' should both be under the project's root
-directory."
+`blox-test-script' and `blox-test-project' should both be under
+the same directory."
   (interactive)
-  (if-let ((directory (locate-dominating-file default-directory
-                                              blox-test-script))
-           (test-project (concat directory blox-test-project))
-           (test-script (concat directory blox-test-script)))
-      (blox-rojo-build
-       test-project
-       (blox--run-after-build-sentinel test-script
-                                       test-project))
-    (blox--echo "Could not locate test script" "blox-test")))
+  (let ((test-project (blox--path blox-test-project))
+        (test-script (blox--path blox-test-script)))
+    (blox-rojo-build
+     test-project
+     (blox--run-after-build-sentinel test-script test-project))))
 
 (provide 'blox)
 
