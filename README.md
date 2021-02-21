@@ -1,10 +1,12 @@
-# blox
+# blox [![MELPA](https://melpa.org/packages/blox-badge.svg)](https://melpa.org/#/blox)
 
-`blox` is a package that provides functions to interact with Roblox tooling such as [Rojo](https://github.com/rojo-rbx/rojo) from the comfort of Emacs.
+Blox is a package that provides functions to interact with Roblox tooling such as [Rojo](https://github.com/rojo-rbx/rojo) from the comfort of Emacs.
 
 ### Installation
 
-To install, put `blox.el` somewhere on your `load-path` and `require` it. `blox.el` doesn't bind any keys by itself; assuming [lua-mode](https://github.com/immerrr/lua-mode) is installed and loaded, a configuration might look something like this:
+Blox is on [melpa](https://melpa.org) and can be installed with your package manager of choice.
+
+Blox doesn't bind any keys by itself. Assuming that [lua-mode](https://github.com/immerrr/lua-mode) is installed, a configuration might look something like this:
 
 ```elisp
 (require 'blox)
