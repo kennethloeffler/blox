@@ -171,6 +171,7 @@ message.  Return the path to the file."
   (blox--save-some-lua-mode-buffers)
   (if (blox--kill-if-running-p "*rojo-serve*")
       (with-current-buffer (get-buffer-create "*rojo-serve*")
+        (cd (file-name-directory project-path))
         (help-mode)
         (make-process
          :name "*rojo-serve*"
