@@ -216,6 +216,9 @@ in the echo area."
           (cd (file-name-directory script-path))
           (blox--echo "Waiting for output from Roblox Studio..."
                       "blox-run-in-roblox")
+          (setq buffer-read-only nil)
+          (erase-buffer)
+          (setq buffer-read-only t)
           (make-process
            :name "*run-in-roblox*"
            :buffer (current-buffer)
